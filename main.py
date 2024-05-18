@@ -5,6 +5,7 @@ import pickle
 # Importando módulos necessários para fazer requisições HTTP e manipular datas
 import requests
 from dateutil.parser import parse
+from google.auth.exceptions import RefreshError
 
 # Importando módulos para autenticação e interação com APIs do Google
 from google.auth.transport.requests import Request
@@ -144,17 +145,19 @@ if __name__ == "__main__":
     # Se não houver credenciais válidas, solicita que o usuário faça “login”
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            # Inicia o fluxo de autenticação e salva as novas credenciais
+            try:
+                creds.refresh(Request())
+            except RefreshError:
+                creds = None
+        if not creds:
+            client_secrets_path = "client_secrets.json"
             flow = InstalledAppFlow.from_client_secrets_file(
-                os.getenv('CLIENT_ID'),
-                os.getenv('CLIENT_SECRET'),
+                client_secrets_path,
                 SCOPES
             )
             creds = flow.run_local_server(port=0)
-        with open('token.pickle', 'wb') as token:
-            pickle.dump(creds, token)
+            with open('token.pickle', 'wb') as token:
+                pickle.dump(creds, token)
 
     # Constrói o serviço do Google Calendar com as credenciais autenticadas
     service = build('calendar', 'v3', credentials=creds)
